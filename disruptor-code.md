@@ -151,12 +151,27 @@ public final class BatchEventProcessor<T> {
                 // 先等待barrier对应的handler处理完，得到下一个可处理序列/插槽
                 final long availableSequence = sequenceBarrier.waitFor(nextSequence);
                 if (batchStartAware != null)
-                {
+                {   
+                    // 待处理序列预处理， 一般只是用来记录
                     batchStartAware.onBatchStart(availableSequence - nextSequence + 1);
                 }
 
                 while (nextSequence <= availableSequence)
-                {
+                {public long waitFor(final long sequence)
+        throws AlertException, InterruptedException, TimeoutException
+    {
+        checkAlert();
+
+        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
+        // 存在barrier，并且得到 所有 barriers 中最小的消费序列，可以开始消费了
+        if (availableSequence < sequence)
+        {
+            return availableSequence;
+        }
+        // single producer: 直接那得到
+        // multi producer: 获取
+        return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+    }
                     event = dataProvider.get(nextSequence);
                     eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                     nextSequence++;
@@ -185,6 +200,127 @@ public final class BatchEventProcessor<T> {
     }
 }
 
+```
+
+
+5. ProcessingSequenceBarrier.waitFor(sequence),默认使用BlockingWaitStrategy  
+
+```java
+
+// sequence表示下一个消费序列
+public long waitFor(final long sequence)
+        throws AlertException, InterruptedException, TimeoutException
+{
+    checkAlert();
+
+    long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
+    // 不清楚什么情况 availableSequence < sequence， 可能更waitStrategy的种类有关，后面再研究
+    if (availableSequence < sequence)
+    {
+        return availableSequence;
+    }
+    // 存在barrier，并且得到 所有 barriers 中最小的消费序列，可以开始消费了
+    // single producer: 直接使用availableSequence
+    // multi producer: 获取 ？/？
+    return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+}
+
+// BlockingWaitStrategy
+public long waitFor(long sequence, Sequence cursorSequence, Sequence dependentSequence, SequenceBarrier barrier)
+        throws AlertException, InterruptedException
+{
+    long availableSequence;
+    // wait event publish
+    // cursor表示已经写入事件的序列， 当低于下一个消费序列时，进行轮训等待，直至生产>=待消费
+    if (cursorSequence.get() < sequence)
+    {
+        synchronized (mutex)
+        {
+            while (cursorSequence.get() < sequence)
+            {
+                barrier.checkAlert();
+                // 当publish event唤醒
+                mutex.wait();
+            }
+        }
+    }
+    // 如果不存在barrier，dependentSequence.get()将返回 Long.MAX_VALUE。 
+    // 否则会轮询直到barrier已经消费完 >=sequence,当前handler才能继续处理
+    while ((availableSequence = dependentSequence.get()) < sequence)
+    {
+        barrier.checkAlert();
+        // 如果是java9,则会调用onSpinWait()进行空轮询，更加有效率，减少cpu的消耗
+        ThreadHints.onSpinWait();
+    }
+
+    return availableSequence;
+}
+```
+
+6. disruptor.publishEvent, 发布事件
+
+```java
+public void publishEvent(EventTranslator<E> translator)
+{
+    final long sequence = sequencer.next();
+    translateAndPublish(translator, sequence);
+}
+```
+
+7. sequencer分为single producer和multi producer
+
+MultiProducerSequencer
+```java
+@Override
+public long next()
+{
+    return next(1);
+}
+
+@Override
+public long next(int n)
+{
+    if (n < 1 || n > bufferSize)
+    {
+        throw new IllegalArgumentException("n must be > 0 and < bufferSize");
+    }
+
+    long current;
+    long next;
+
+    do
+    {
+        // 当前生产序列
+        current = cursor.get();
+        next = current + n;
+        // 等到生产一圈后的生产数量 ？
+        long wrapPoint = next - bufferSize;
+        // gatingSequenceCache 初始值为 -1  barries最低消费序列
+        long cachedGatingSequence = gatingSequenceCache.get();
+        // 轮询直至生产和消费正常 
+        // cachedGatingSequence > current 什么情况会消费快于生产？
+        // 自己的理解，可能有误： 手动指定待消费序列 sequcencer.claim  
+        if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
+        {
+            long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
+            // 可以看作 next > gatingSequence + bufferSize, 表示produce快于消费。再produce就会覆盖尚未消费的序列
+            if (wrapPoint > gatingSequence)
+            {
+                LockSupport.parkNanos(1); // TODO, should we spin based on the wait strategy?
+                continue;
+            }
+
+            gatingSequenceCache.set(gatingSequence);
+        }
+        else if (cursor.compareAndSet(current, next))
+        {
+            break;
+        }
+    }
+    while (true);
+
+    return next;
+}
 ```
 
 
