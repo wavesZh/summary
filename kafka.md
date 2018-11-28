@@ -10,9 +10,8 @@
 
 ## 杂记
 
-1. spring应用启动时，consumer通过KafkaListenerAnnotationBeanPostProcessor.postProcessAfterInitialization方法进行初始化, 根据`containerFactory = "kafkaListenerContainerFactory"`从spring容器中找出匹配的bean。 
-由KafkaConsumerConfig可知kafkaListenerContainerFactory的作用域是single，单例。 
-如果多个@KafkaListener使用同一个kafkaListenerContainerFactory，即同一个消费组订阅多个topic，每个topic的listener数量会低于预期值concurrency。
+1. spring应用启动时，consumer通过KafkaListenerAnnotationBeanPostProcessor.postProcessAfterInitialization方法进行初始化, 根据`containerFactory = "kafkaListenerContainerFactory"`从spring容器中找出匹配的bean。由KafkaConsumerConfig可知kafkaListenerContainerFactory的作用域是single。  
+如果多个@KafkaListener使用同一个kafkaListenerContainerFactory，即同一个消费组订阅多个topic，每个topic的listener数量会低于预期值concurrency？
 
 ```java
 @Component
