@@ -221,7 +221,7 @@ public long waitFor(final long sequence)
     }
     // 存在barrier，并且得到 所有 barriers 中最小的消费序列，可以开始消费了
     // single producer: 直接使用availableSequence
-    // multi producer: 获取 ？/？
+    // multi producer: 根据pushlishEvent时的规则获取有效的序列
     return sequencer.getHighestPublishedSequence(sequence, availableSequence);
 }
 
@@ -269,7 +269,8 @@ public void publishEvent(EventTranslator<E> translator)
 
 7. sequencer分为single producer和multi producer
 
-MultiProducerSequencer
+* MultiProducerSequencer
+
 ```java
 @Override
 public long next()
@@ -302,6 +303,7 @@ public long next(int n)
         // 自己的理解，可能有误： 手动指定待消费序列 sequcencer.claim  
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
         {
+            // barriers最低消费序列
             long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
             // 可以看作 next > gatingSequence + bufferSize, 表示produce快于消费。再produce就会覆盖尚未消费的序列
             if (wrapPoint > gatingSequence)
@@ -322,6 +324,46 @@ public long next(int n)
     return next;
 }
 ```
+
+* SingleProducerSequencer
+
+```java
+
+public long next(int n)
+{
+    if (n < 1 || n > bufferSize)
+    {
+        throw new IllegalArgumentException("n must be > 0 and < bufferSize");
+    }
+
+    long nextValue = this.nextValue;
+
+    long nextSequence = nextValue + n;
+    long wrapPoint = nextSequence - bufferSize;
+    long cachedGatingSequence = this.cachedValue;
+
+    if (wrapPoint > cachedGatingSequence || cachedGatingSequence > nextValue)
+    {
+        // valatile内存可见
+        cursor.setVolatile(nextValue);  // StoreLoad fence
+
+        long minSequence;
+        while (wrapPoint > (minSequence = Util.getMinimumSequence(gatingSequences, nextValue)))
+        {
+            LockSupport.parkNanos(1L); // TODO: Use waitStrategy to spin?
+        }
+
+        this.cachedValue = minSequence;
+    }
+
+    this.nextValue = nextSequence;
+
+    return nextSequence;
+}
+
+```
+
+
 
 
 
