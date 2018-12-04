@@ -2,6 +2,10 @@
 
 日常kafka使用零碎所得。
 
+## link
+
+https://www.cnblogs.com/huxi2b/p/6223228.html
+
 ## 基本概念
 
 * consumer group下可以有一个或多个consumer instance，consumer instance可以是一个进程，也可以是一个线程
@@ -97,3 +101,31 @@ protected void doStart() {
 				.submitListenable(this.listenerConsumer);
 }
 ```
+
+
+2. 埋坑： max.poll.interval.ms 
+
+[Difference between session.timeout.ms and max.poll.interval.ms](https://stackoverflow.com/questions/39730126/difference-between-session-timeout-ms-and-max-poll-interval-ms-for-kafka-0-10-0)
+
+当consumer的max.poll.interval.ms比业务处理时间要长的话，会导致rebalance，offset提交失败，进而重复消费message。
+
+
+复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），取保存活，不影响consumer线程）-> 后面看到日志提示， You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. 增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
+
+
+ps: auto.commit=true, 当下一次poll时提交之前poll下来的offset；auto.commit=false，当
+
+具体原理不是很清晰了解
+
+code:
+
+```java
+
+```
+
+
+
+
+
+
+
