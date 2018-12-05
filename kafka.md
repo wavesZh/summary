@@ -113,7 +113,7 @@ protected void doStart() {
 复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），取保存活，不影响consumer线程）-> 后面看到日志提示， You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. 增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
 
 
-ps: auto.commit=true, 当下一次poll时提交之前poll下来的offset；auto.commit=false，当
+ps: auto.commit=true, 当下一次poll时提交之前poll下来的offset；auto.commit=false，当每次处理完poll的消息提交offset
 
 具体原理不是很清晰了解
 
@@ -122,6 +122,13 @@ code:
 ```java
 
 ```
+
+3. 误区 auto.offset.reset：latest and earliest
+
+link: [Why is Kafka consumer ignoring my “earliest” directive in the auto.offset.reset parameter and thus not reading my topic from the absolute first event?
+](https://stackoverflow.com/questions/49945450/why-is-kafka-consumer-ignoring-my-earliest-directive-in-the-auto-offset-reset)
+
+auto.offset.reset都是在consumer起初开始消费，没有offset记录时起作用。earliest不能重复消费消息，只是初始化消费时从最早的数据开始消费，同理latest只是在初始化消费时，消费最新的数据。要想重新消费旧数据，可以通过更改group name和`seekToBeginning()`实现。
 
 
 
