@@ -157,21 +157,7 @@ public final class BatchEventProcessor<T> {
                 }
 
                 while (nextSequence <= availableSequence)
-                {public long waitFor(final long sequence)
-        throws AlertException, InterruptedException, TimeoutException
-    {
-        checkAlert();
-
-        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
-        // 存在barrier，并且得到 所有 barriers 中最小的消费序列，可以开始消费了
-        if (availableSequence < sequence)
-        {
-            return availableSequence;
-        }
-        // single producer: 直接那得到
-        // multi producer: 获取
-        return sequencer.getHighestPublishedSequence(sequence, availableSequence);
-    }
+                {
                     event = dataProvider.get(nextSequence);
                     eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                     nextSequence++;
@@ -362,6 +348,13 @@ public long next(int n)
 }
 
 ```
+
+由上可见多生产者和单生产者的pulish区别， 多生产者使用CAS进行标记生产序列，单生产者使用valatile保证内存可见。
+
+
+# link
+
+[Disruptor之概览](https://blog.reactor.top/2018/01/26/Disruptor%E4%B9%8B%E6%A6%82%E8%A7%88/)
 
 
 

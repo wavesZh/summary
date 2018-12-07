@@ -18,4 +18,4 @@ Java内存模型杂记
 
 ## volatile
 
-
+volatile是通过增加一个作用相当于内存屏障，是使得别的cpu或者别的内核无效化其cache，使得volatile变量的修改对其他cpu可见。
