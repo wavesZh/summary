@@ -2,6 +2,12 @@
 
 ## 1. 无锁，使用CAS，锁的效率比CAS低
 
+CAS是也是一种锁，乐观锁。    
+这里无锁是指多线程publish和get时不需要使用lock、synchronized等常见的悲观锁，可以对比`ArrayBlockingQueue`的poll和offer。
+在publish里面有特殊的地方：wait strangy，等待策略大多数使用了`wait`和`notify`，但是触发场景是消费和生产速度不正常的情况。
+
+
+
 ```java
 public long incrementAndGet()
 {
