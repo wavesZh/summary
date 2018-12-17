@@ -270,7 +270,7 @@ private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
             int ops = k.interestOps();
             ops &= ~SelectionKey.OP_CONNECT;
             k.interestOps(ops);
-            // 在finishConnect方法中将read op放入interest ops中，不细说，过
+            // 在finishConnect方法中将read op放入interest ops中，不细说，过(AbstractNioChannel.doBeginRead)
             unsafe.finishConnect();
         }
 
@@ -307,7 +307,7 @@ while (buffer.hasRemaining()) {
 }
 ~~~
 
-因为写缓冲区在绝大部分时候都是有空闲空间的，所以如果你注册了写事件，这会
+因为写缓冲区在绝大部分时候都是有空闲空间的，所以如果你注册了写事件，这会使得写事件一直处于就就绪，选择处理现场就会一直占用着CPU资源。所以，只有当你确实有数据要写时再注册写操作，并在写完以后马上取消注册。
 
 
 
@@ -353,7 +353,7 @@ private void register0(ChannelPromise promise) {
 ```
 
 
-使得写事件一直处于就就绪，选择处理现场就会一直占用着CPU资源。所以，只有当你确实有数据要写时再注册写操作，并在写完以后马上取消注册。
+
 
 ~~~java
 // OP_READ = 1 << 0
