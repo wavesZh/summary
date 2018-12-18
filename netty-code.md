@@ -101,6 +101,7 @@ AbstractBootstrap.initAndRegister -> MultithreadEventLoopGroup.register -> Singl
 final ChannelFuture initAndRegister() {
     ... ... 
     // 利用反射调用了之前bootstrap初始化设置的channel类型的构造函数。这里是NioSocketChannel。
+    // 注意初始化时生成了java nio原生的channel以及其他组件
     channel = channelFactory.newChannel();
     ... ...
 }
@@ -156,6 +157,18 @@ public final void register(EventLoop eventLoop, final ChannelPromise promise) {
 ~~~
 
 `eventLoop.inEventLoop()`：当前线程是否是此eventLoop对应的线程。不是的话，则将task放入eventloop对应线程的task queue中，等待eventloop轮询执行。
+
+`为什么要这么做呢` 多线程下，无需对handler做额外的同步。除非是`@Sharable`标注的handler。  
+[netty concurrency](https://github.com/netty/netty/wiki/New-and-noteworthy-in-4.0#well-defined-thread-model)
+
+`为什么出现这种情况呢？` 由于平时使用可能会使用到业务线程池，减少I/O线程占有时间，但是增加了线程上下文切换的次数。具体取舍。。。  
+[netty性能优化](https://www.cnblogs.com/549294286/p/5177663.html)
+
+《Netty权威指南》写到:
+>通过调用NioEventLoop的execute(Runnable task)方法实现，Netty有很多系统Task，创建他们的主要原因是：当I/O线程和用户线程同时操作网络资源时，为了防止并发操作导致的锁竞争，将用户线程的操作封装成Task放入消息队列中，由I/O线程负责执行，这样就实现了局部无锁化。
+
+
+`@Sharable`如何起作用：`DefaultChannelPipeline.isSharable()`
 
 SingleThreadEventExecutor.execute -> SingleThreadEventExecutor.startThread -> SingleThreadEventExecutor.doStartThread -> NioEventLoop.run
 
@@ -311,49 +324,7 @@ while (buffer.hasRemaining()) {
 
 
 
-那主要先看看注册task`register0`方法。(先放放)
-
-```java
-// AbstractUnsafe.register0
-private void register0(ChannelPromise promise) {
-    try {
-        // check if the channel is still open as it could be closed in the mean time when the register
-        // call was outside of the eventLoop
-        if (!promise.setUncancellable() || !ensureOpen(promise)) {
-            return;
-        }
-        boolean firstRegistration = neverRegistered;
-        doRegister();
-        neverRegistered = false;
-        registered = true;
-
-        // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
-        // user may already fire events through the pipeline in the ChannelFutureListener.
-        pipeline.invokeHandlerAddedIfNeeded();
-
-        safeSetSuccess(promise);
-        pipeline.fireChannelRegistered();
-        // Only fire a channelActive if the channel has never been registered. This prevents firing
-        // multiple channel actives if the channel is deregistered and re-registered.
-        if (isActive()) {
-            if (firstRegistration) {
-                pipeline.fireChannelActive();
-            } else if (config().isAutoRead()) {
-                beginRead();
-            }
-        }
-    } catch (Throwable t) {
-        // Close the channel directly to avoid FD leak.
-        closeForcibly();
-        closeFuture.setClosed();
-        safeSetFailure(promise, t);
-    }
-}
-
-```
-
-
-
+那主要先看看注册task`register0`中`doRegister`的方法。
 
 ~~~java
 // OP_READ = 1 << 0
@@ -365,7 +336,7 @@ protected void doRegister() throws Exception {
     for (;;) {
         try {
             // 0 是指socket-connect operations, 为什么要是0呢？socket-connect operations一般只有1，4，8
-            // todo
+            // todo java nio的原生使用， 自行了解
             selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
             return;
         } catch (CancelledKeyException e) {
@@ -384,6 +355,43 @@ protected void doRegister() throws Exception {
 }
 
 ~~~
+
+`register`task提交，接下来`bind`task。保证了`Channel 注册发生在绑定 之前`。
+
+```java
+ private static void doBind0(
+    final ChannelFuture regFuture, final Channel channel,
+    final SocketAddress localAddress, final ChannelPromise promise) {
+
+    // 将bind task提交到task queue中，等待执行
+    // 为什么要提交到queue中呢？原因如上。
+    channel.eventLoop().execute(new Runnable() {
+        @Override
+        public void run() {
+            if (regFuture.isSuccess()) {
+                channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+            } else {
+                promise.setFailure(regFuture.cause());
+            }
+        }
+    });
+}
+```
+bind的流向： tail->head。 inBound的流向。
+
+这里需要了解`inbound`和`outbound`:
+>inbound为上行事件，outbound为下行事件。inbound事件为被动触发，在某些情况发生时自动触发；outbound为主动触发，在需要主动执行某些操作时触发。
+从URL类图可知，`TailContext`只处理inbound事件，`HeadContext`处理inbound和outbound事件。可看具体实现。
+
+
+
+```java
+
+```
+
+
+
+
 
 
 
