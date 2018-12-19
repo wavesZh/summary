@@ -377,8 +377,8 @@ protected void doRegister() throws Exception {
     });
 }
 ```
-bind的流向： tail->head。 inBound的流向。
-
+bind的流向： tail->head。 inBound的流向。  
+![linux-io](img/关于&#32;Channel&#32;注册与绑定的时序问题.png)
 这里需要了解`inbound`和`outbound`:
 >inbound为上行事件，outbound为下行事件。inbound事件为被动触发，在某些情况发生时自动触发；outbound为主动触发，在需要主动执行某些操作时触发。
 从URL类图可知，`TailContext`只处理inbound事件，`HeadContext`处理inbound和outbound事件。可看具体实现。
