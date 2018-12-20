@@ -2,7 +2,7 @@
 
 ## 1. 无锁，使用CAS，锁的效率比CAS低
 
-CAS是也是一种锁，乐观锁。    
+CAS是也是一种锁，乐观锁，搭配`volatile`一起使用。    
 这里无锁是指多线程publish和get时不需要使用lock、synchronized等常见的悲观锁，可以对比`ArrayBlockingQueue`的poll和offer。
 在publish里面有特殊的地方：wait strangy，等待策略大多数使用了`wait`和`notify`，但是触发场景是消费和生产速度不正常的情况。
 
@@ -88,7 +88,7 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
 	external: Linux 内核会将它最近访问过的文件页面缓存在内存中一段时间，这个文件缓存被称为 PageCache。
 
 
-## 3. 循环队列，重复利用，减少了GC
+## 3. 循环队列，对象池化，减少了GC
 
 
 
