@@ -5,6 +5,7 @@ Java内存模型杂记
 ## link
 
 [Threads and Locks](https://docs.oracle.com/javase/specs/jvms/se6/html/Threads.doc.html)
+[volatile](https://stackoverflow.com/questions/36853986/does-java-volatile-prevent-caching-or-enforce-write-through-caching)
 
 ## 基本概念
 
@@ -27,7 +28,7 @@ Java内存模型杂记
 |write(写入)|主内存|将store传输的变量放入主内存中的变量中|
 
 
-### 
+### 原子性 可见性 有序性
 
 
 ## volatile
@@ -35,6 +36,12 @@ Java内存模型杂记
 对volatile变量的写操作编译后是一个lock前缀的指令，相当于一个内存屏障，使得别的cpu或者别的内核无效化其cache，使得volatile变量的修改对其他cpu可见。
 
 volatile内存可见性前提：运算结果不依赖于该变量以及其他共享变量。 
+
+ps: 对于valatile可见性，在网上看到了两种说法： 
+1. 对volatile变量的更改进入main memory，使work memory的副本失效，导致接下来read 时会从main memory读取。
+2. 每次read volatile变量直接从main memory读取。
+
+有点晕！哪种是正确的？[这里](https://stackoverflow.com/questions/36853986/does-java-volatile-prevent-caching-or-enforce-write-through-caching)
 
 <!--
 例如： `volatile long i = 0 ;  i ++;` 对的，`i ++`依赖自己了。 那换成`i = i + 1`就可以了吗? 也许是可以了。
