@@ -295,7 +295,6 @@ private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
 
         // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
         // to a spin loop
-        // 这里提到了将readyOps设为0的原因：由于jdk bug，避免空转
         if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
             unsafe.read();
         }
@@ -335,7 +334,7 @@ protected void doRegister() throws Exception {
     boolean selected = false;
     for (;;) {
         try {
-            // 0 是指socket-connect operations, 为什么要是0呢？socket-connect operations一般只有1，4，8
+            // 0 是指socket-connect operations, 为什么要是0呢？只是为了注册？socket-connect operations一般只有1，4，8
             // todo java nio的原生使用， 自行了解
             selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
             return;
@@ -378,16 +377,31 @@ protected void doRegister() throws Exception {
 }
 ```
 bind的流向： tail->head。 inBound的流向。  
-![linux-io](img/关于&#32;Channel&#32;注册与绑定的时序问题.png)
+![注册与绑定的时序问题](img/关于&#32;Channel&#32;注册与绑定的时序问题.png)
 这里需要了解`inbound`和`outbound`:
 >inbound为上行事件，outbound为下行事件。inbound事件为被动触发，在某些情况发生时自动触发；outbound为主动触发，在需要主动执行某些操作时触发。
 从URL类图可知，`TailContext`只处理inbound事件，`HeadContext`处理inbound和outbound事件。可看具体实现。
 
+[add handler](https://my.oschina.net/7001/blog/1421893)
 
+>调用safeSetSuccess通知promise之前需首先调用pipeline.invokeHandlerAddedIfNeeded()确保handler已经被添加到pipeline上，这是非常有必要的。假设先调用safeSetSuccess，即通知promise通道成功注册到多路复用器上，promise将调用notifyListeners通知所有监听者，若客户端已经在ChannelFutureListener中通过pipeline触发事件，用户自定义handler可能就会丢失该事件。回顾一下，context将事件提交给handler处理时，都会先调用invokeHandler()检查handler的状态，对于需要按顺序处理事件的context，只有handler的状态为ADD_COMPLETE，invokeHandler()才会将事件交给对应的handler处理，否则，只负责传递事件。而只有当Channel注册完成之后，handler的状态才会被设置为ADD_COMPLETE。因此需要首先调用invokeHandlerAddedIfNeeded确保ChannelInitializer的实例被添加到pipeline中，然后将自定义的handler添加到pipeline，这样可保证handler不会丢失事件。
+
+
+
+
+
+
+## server
+
+[ChannelOption](https://docs.oracle.com/javase/7/docs/api/java/net/ServerSocket.html)
+
+server有两个eventloopgroup：boss和worker。boss一般只有一个线程，负责接收请求；worker仅负责接收client连接请求，并将其注册到worker。这种模式类似于主从Reactor多线程模型。
 
 ```java
 
+
 ```
+
 
 
 
