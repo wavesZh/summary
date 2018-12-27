@@ -395,13 +395,48 @@ bind的流向： tail->head。 inBound的流向。
 
 [ChannelOption](https://docs.oracle.com/javase/7/docs/api/java/net/ServerSocket.html)
 
-server有两个eventloopgroup：boss和worker。boss一般只有一个线程，负责接收请求；worker仅负责接收client连接请求，并将其注册到worker。这种模式类似于主从Reactor多线程模型。
+server有两个eventloopgroup：boss和worker。boss仅负责accept client连接请求，并将其注册到workers。这种模式类似于主从Reactor多线程模型。那么boss什么时候需要多线程呢?[这里](https://stackoverflow.com/questions/34275138/why-do-we-really-need-multiple-netty-boss-threads)
+
+```java
+
+EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+EventLoopGroup workerGroup = new NioEventLoopGroup();
+final EchoServerHandler serverHandler = new EchoServerHandler();
+
+ServerBootstrap b = new ServerBootstrap();
+b.group(bossGroup, workerGroup)
+ .channel(NioServerSocketChannel.class)
+ .option(ChannelOption.SO_BACKLOG, 100)
+ .handler(new LoggingHandler(LogLevel.INFO))
+ .childHandler(new ChannelInitializer<SocketChannel>() {
+     @Override
+     public void initChannel(SocketChannel ch) throws Exception {
+         ChannelPipeline p = ch.pipeline();
+         if (sslCtx != null) {
+             p.addLast(sslCtx.newHandler(ch.alloc()));
+         }
+         //p.addLast(new LoggingHandler(LogLevel.INFO));
+         p.addLast(serverHandler);
+     }
+ });
+
+// Start the server.
+ChannelFuture f = b.bind(PORT).sync();
+
+// Wait until the server socket is closed.
+f.channel().closeFuture().sync();
+```
+
+主要看下`bind`方法
+
+`doBind`看起来主要和client差不多，先channel绑定到selector，然后bind端口。
+`NioServerSocketChannel`的构造函数，可以看到默认的readInterestOp是`OP_ACCEPT`,用于bind成功后，注册到selectot感兴趣的事件集中，等待accept连接。
 
 ```java
 
 
-```
 
+```
 
 
 
