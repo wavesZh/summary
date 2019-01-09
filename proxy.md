@@ -135,3 +135,36 @@ public final class $Proxy0 extends Proxy implements HelloWorld {
 * cglib代理
 
 通过继承实现代理。那么`不能被继承的方法就不能被代理`，如final,private。
+
+
+
+## spring aop
+
+### 配置项
+
+* `proxyTargetClass`: 是否cglib优先。
+* `optimize`: 是否对生成代理策略进行优化(看源码感觉没什么用)。true :  进行优化，如果有接口就代理接口(使用JDK动态代理)，没有接口代理类（CGLIB代理）
+* `opaque`: 是否可以cast成`Advised`，`Advised`可以查询和修改配置信息呀。
+`exposeProxy`: 暴露proxy。比较常用。当调用内部方法如父类方法，想要触发aop，则需要暴露proxy。
+`frozen`: 是否冻结`Advised`配置信息。
+
+~~~java
+public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
+    if (config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config)) {
+        Class<?> targetClass = config.getTargetClass();
+        if (targetClass == null) {
+            throw new AopConfigException("TargetSource cannot determine target class: " +
+                    "Either an interface or a target is required for proxy creation.");
+        }
+        if (targetClass.isInterface() || Proxy.isProxyClass(targetClass)) {
+            return new JdkDynamicAopProxy(config);
+        }
+        return new ObjenesisCglibAopProxy(config);
+    }
+    else {
+        return new JdkDynamicAopProxy(config);
+    }
+}
+~~~
+
+
