@@ -132,7 +132,8 @@ auto.offset.reset都是在consumer起初开始消费，没有offset记录时起�
 
 
 
+4. kafka异步发送消息
 
+kafka默认就是异步`Future future = producer.send(record)`, 同步就话，`producer.send(record).get()`。根据业务自行选择。
 
-
-
+发送结果可以通过future来获取，但是会阻塞。也可以通过自定义`ProducerListener`中的来异步处理结果。由`KafkaTemplate.doSend`可知。
