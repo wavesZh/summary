@@ -51,7 +51,7 @@ Reactor 核心是解决多请求问题。一般来说，Thread-Per-Connection �
 ### 多线程 Reactor 模式
 
 
-![reactor多线程](img/multiple-reactor.png)
+![reactor多线程](img/multiple-reactors.png)
 
 **简单来说，接收请求和处理请求是不同线程中处理。**
 
