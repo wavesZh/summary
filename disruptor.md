@@ -38,7 +38,6 @@ public boolean compareAndSet(final long expectedValue, final long newValue)
 CAS（compare and swap）-> Unsafe -> JNI（java nactive interface）。 
 
 
-
 缺点：
 * 轮训
 * ABA
@@ -88,7 +87,33 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
 	external: Linux 内核会将它最近访问过的文件页面缓存在内存中一段时间，这个文件缓存被称为 PageCache。
 
 
-## 3. 循环队列，对象池化，减少了GC
+## 3.RingBuffer的结构
+
+1. 数组有利于预读。
+
+2. 数组预分配内存，减少GC。
+
+~~~java
+disruptor.publishEvent(
+    new EventTranslator<EventHolder>()
+    {
+        @Override
+        public void translateTo(final EventHolder holder, final long sequence)
+        {
+            holder.setEvent(currentEvent)
+        }
+    });
+~~~
+
+~~~java
+public final class EventHolder
+{
+   private Object event;
+}
+~~~
+
+通常都会使用`publishEvent(EventTranslator<T> eventTranslator)`来生产事件。`EventHolder`里面包含了需要处理event，发布事件时只需要将holder中的event替换即可。不需要像链表，消费完需要将holder删除，新增还需要new holder。
+
 
 
 
