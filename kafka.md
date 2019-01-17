@@ -105,23 +105,55 @@ protected void doStart() {
 
 2. 埋坑： max.poll.interval.ms 
 
-[Difference between session.timeout.ms and max.poll.interval.ms](https://stackoverflow.com/questions/39730126/difference-between-session-timeout-ms-and-max-poll-interval-ms-for-kafka-0-10-0)
+[Difference between session.timeout.ms and max.poll.interval.ms](https://stackoverflow.com/questions/39730126/difference-between-session-timeout-ms-and-max-poll-interval-ms-for-kafka-0-10-0)。
+[困扰许久的Kafka Rebalance问题](https://zhuanlan.zhihu.com/p/46963810)  
+good:[Kafka client 消息接收的三种模式](https://blog.csdn.net/laojiaqi/article/details/79034798)
 
-当consumer的max.poll.interval.ms比业务处理时间要长的话，会导致rebalance，offset提交失败，进而重复消费message。
+当consumer的max.poll.interval.ms比业务处理时间要短的话，会导致rebalance，offset提交失败，进而重复消费message。
 
 
-复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），取保存活，不影响consumer线程）-> 后面看到日志提示， You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. 增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
+复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），确保存活，不影响consumer线程）-> 后面看到日志提示， `You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. `增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
 
 
-ps: auto.commit=true, 当下一次poll时提交之前poll下来的offset；auto.commit=false，当每次处理完poll的消息提交offset
+ps: springkafka, enable.auto.commit=false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交
 
 具体原理不是很清晰了解
+
+ListenerConsumer.run-> this.consumer.poll(this.containerProperties.getPollTimeout())->KafkaConsumer.pollOnce->
+
+
+HeartbeatThread 负责坚持节点的存活情况。
 
 code:
 
 ```java
-
+// 如果当前时间-最近一次poll时间>maxPollInterval,则判定该节点可能死亡，需将从group中剔除，导致rebalance。
+// 
+if (heartbeat.pollTimeoutExpired(now)) {
+	maybeLeaveGroup();
+}
+public boolean pollTimeoutExpired(long now) {
+    return now - lastPoll > maxPollInterval;
+}
 ```
+
+rebalance导致提交失败: ConsumerCoordinator.sendOffsetCommitRequest
+
+~~~java
+final Generation generation;
+if (subscriptions.partitionsAutoAssigned())
+	// 客户端状态不再是STABLE
+    generation = generation();
+else
+    generation = Generation.NO_GENERATION;
+
+// if the generation is null, we are not part of an active group (and we expect to be).
+// the only thing we can do is fail the commit and let the user rejoin the group in poll()
+if (generation == null)
+    return RequestFuture.failure(new CommitFailedException());
+~~~
+
+`ConsumerRebalanceListener`了解下
 
 3. 误区 auto.offset.reset：latest and earliest
 
