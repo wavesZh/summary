@@ -94,8 +94,22 @@ jdk8相对于jdk7的插入方式不同，其是向tail插入节点，这样就�
 ### link
 
 [Java 8系列之重新认识HashMap](https://zhuanlan.zhihu.com/p/21673805)
+[Why does HashMap.put both compare hashes and test equality?](https://stackoverflow.com/questions/36100482/why-does-hashmap-put-both-compare-hashes-and-test-equality)
 
 ## ConcurrentHashMap
+
+同步方式：cas + synchronized
+
+jdk8之前是用分段锁的方式控制并发，但是效率稍低。jdk8将锁的粒度优化到每一个节点。
+
+table.length >= MIN_TREEIFY_CAPACITY && binCount >= TREEIFY_THRESHOLD -> treeifyBin
+
+put: 
+
+1. helpTransfer
+2. tryPresize
+
+
 
 
 ## WeakHashMap 

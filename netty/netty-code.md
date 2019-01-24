@@ -110,10 +110,10 @@ final ChannelFuture initAndRegister() {
 
 
 
-[SelectionKey ops](https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.nio.channels.SelectionKey.OP_ACCEPT)
-[netty](https://www.imooc.com/article/31718)
-[selector](http://tutorials.jenkov.com/java-nio/selectors.html)
-[nio](http://www.importnew.com/26563.html)
+[SelectionKey ops](https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.nio.channels.SelectionKey.OP_ACCEPT).  
+[netty](https://www.imooc.com/article/31718).  
+[selector](http://tutorials.jenkov.com/java-nio/selectors.html).  
+[nio](http://www.importnew.com/26563.html).  
 
 
 ~~~java
@@ -161,7 +161,10 @@ public final void register(EventLoop eventLoop, final ChannelPromise promise) {
 `为什么要这么做呢` 多线程下，无需对handler做额外的同步。除非是`@Sharable`标注的handler。  
 [netty concurrency](https://github.com/netty/netty/wiki/New-and-noteworthy-in-4.0#well-defined-thread-model)
 
-`为什么出现这种情况呢？` 由于平时使用可能会使用到业务线程池，减少I/O线程占有时间，但是增加了线程上下文切换的次数。具体取舍。。。  
+`为什么出现这种情况呢？` 由于平时使用可能会使用到业务线程池，减少I/O线程占有时间，但是增加了线程上下文切换的次数。具体取舍。。。I/O线程负责read,write等ops。
+
+
+
 [netty性能优化](https://www.cnblogs.com/549294286/p/5177663.html)
 
 《Netty权威指南》写到:
@@ -432,10 +435,7 @@ f.channel().closeFuture().sync();
 `doBind`看起来主要和client差不多，先channel绑定到selector，然后bind端口。
 `NioServerSocketChannel`的构造函数，可以看到默认的readInterestOp是`OP_ACCEPT`,用于bind成功后，注册到selectot感兴趣的事件集中，等待accept连接。
 
-```java
-
-
-
+    
 ```
 
 

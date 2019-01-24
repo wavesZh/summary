@@ -81,3 +81,12 @@ public class SingleTon{
 }
 ```
 
+## 3. ThreadLocal与static
+
+使用当前线程中的`ThreadLocalMap`保存对象的弱引用。
+<img src="img/threadlocal.png"/>
+
+[Why should Java ThreadLocal variables be static](https://stackoverflow.com/questions/2784009/why-should-java-threadlocal-variables-be-static)
+
+
+
