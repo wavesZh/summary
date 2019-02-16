@@ -14,8 +14,9 @@ java: Files.lines(Paths) -> 数据加工 -> fork-join -> redis pipeline
 ## 2. 单例模式-静态内部类的原理
 
 ~~~java
- public static class SingleTonHolder {
-        public static SingleTon INSTANCE = new SingleTon();
+public class SingleTon {
+    public static class SingleTonHolder {
+        private static SingleTon INSTANCE = new SingleTon();
         // static {
         //     System.out.println("holder");
         // }
@@ -33,6 +34,8 @@ java: Files.lines(Paths) -> 数据加工 -> fork-join -> redis pipeline
     public static SingleTon getInstance() {
         return SingleTonHolder.INSTANCE;
     }
+}
+
 ~~~
 
 选择静态内部类实现单例的优势： 
