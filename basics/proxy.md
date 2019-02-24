@@ -1,4 +1,4 @@
-# proxy
+    # proxy
 
 
 ## 代理
@@ -36,6 +36,8 @@ public class HelloWorldProxy implements HelloWorld {
     }
 }
 ```
+
+突然感觉静态代理模式和装饰者模式十分相似。其主要区别在于目的： 装饰者模式侧重动态增强功能，代理模式侧重控制对象。
 
 2. 动态代理
 
