@@ -117,7 +117,7 @@ good:[Kafka client 消息接收的三种模式](https://blog.csdn.net/laojiaqi/a
 复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），确保存活，不影响consumer线程）-> 后面看到日志提示， `You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. `增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
 
 
-ps: springkafka, enable.auto.commit=false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交（sendOffsetCommitRequest）
+ps: springkafka, enable.auto.commit=false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交（consumerCoordinator.maybeAutoCommitOffsetAsync）
 
 
 HeartbeatThread 负责坚持节点的存活情况。

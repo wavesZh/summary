@@ -33,7 +33,22 @@ link: [Difference between Pending Messages and Enqueue Counter in Active MQ?](ht
 
 ### purge and delete
 
-* purge: 
+purge: 
+
+delete: 删除队列
+
+### 消息类型
+
+|消息类型|说明|
+|:-----|:-----|
+|StreamMessage|一种主体中包含Java基元值流的消息。其填充和读取均按顺序进行|
+|MapMessage  |一种主体中包含一组键--值对的消息。没有定义条目顺序|
+|TextMessage|一种主体中包含Java字符串的消息（例如，XML消息）|
+|ObjectMessage|一种主体中包含序列化Java对象的消息|
+|BytesMessage|一种主体中包含连续字节流的消息|
+
+
+
 
 
 
