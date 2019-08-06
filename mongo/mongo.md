@@ -3,6 +3,7 @@
 ## link
 
 [Mysql 索引原理及优化](http://www.cnblogs.com/hellojesson/p/6001685.html)
+[WriteConcern](https://www.cnblogs.com/AK47Sonic/p/7560177.html)
 
 ## index 索引
 
@@ -34,4 +35,33 @@ index的建立要依赖于数据的实际使用情况。
 ## shard 分片
 
 shard key 不能进行更新，`Error:
-Error when saving document: 1 After applying the update to the document {createTime: new Date(1542886184859) , ...}, the (immutable) field 'createTime' was found to have been altered to createTime: new Date(1542886181859)`。
+Error when saving document: 1 After applying the update to the document {createTime: new Date(1542886184859) , ...}, the (immutable) field 'createTime' was found to have been altered to createTime: new Date(1542886181859)`
+
+## 数据丢失
+
+mongodb cpu高，导致insert数据丢失却无异常。无mongo服务端现场日志
+
+mongodb集群模式：多分片，2副本，仲裁节点等
+
+无异常返回，查看`WriteConcern`设置
+W1：确认主分片写内存操作的结果
+journal=false：不生成日志，即不保证宕机恢复内存数据
+
+综上可猜测：
+1. mongo服务端接收数据成功，内存数据异步落盘失败
+2. 主分片异步落盘成功，但将信息同步至副本时，主分片宕机，集群重新选主，当原主恢复后，发生数据回滚与现主保持一致
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
