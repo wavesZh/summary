@@ -108,7 +108,7 @@ public void destroy() {
 
 3. 清除 invoker
 
-4. 清除 exporter
+4. 清除 exporter。exporter其实是invoker的载体
 
 
 
