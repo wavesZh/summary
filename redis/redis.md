@@ -1,4 +1,4 @@
-# 《Redis 实战》读书笔记
+# Redis
 
 
 ## 持久化：AOF与RDB
@@ -80,7 +80,26 @@ Redis Sentinel 主故障自动切换
 
 ## 事务
 
-`MULTI-EXEC` 事务只能保证原子性，多事务下无法保证一致性
+`MULTI-EXEC` 事务只能保证原子性，不保证可见性，故存在并发事务问题
+
+`watch`乐观锁
+
+
+## SUB/PUB
+
+发布/订阅，通过 channel 来实现。
+
+实现一个 redis datasource，实时同步数据。如果只是 value 类型的数据，通过简单的 S/P channel 即可拿到变更的值，其中不设置 key 这个概念。
+但是， 如果数据为 Hash 类型，如果用以上的channel简单做法，有两种方式： 1. hash value 全部更新，无论是否发生变化; 2. 针对发布的消息做定制化处理，如"{"key" : "code1", "value" : "rule1"}”, 订阅方解析数据进行局部更新。
+
+当然有更为麻烦的做法：[键空间通知（keyspace notification）](http://redisdoc.com/topic/notification.html)。这个是借助于 channel 来实现的，但是传递的消息不是直接数据。 `keyspace` 会传递对 key 进行的操作信息，如 set, del 等；而 `keyevent` 会传递操作 key 的名称。首先客户端连接要设置 `notify-keyspace-events` 决定传递哪些类型的通知。
+
+如果要做 datasource, 则需要解析传递的数据，并查询 redis 更新本地数据，但是这样只是设计 key 级别的更新。好处就是不用而外额外手动更新 redis 数据了（当然可以在更新本地数据的时再更新 redis）。
+
+
+
+
+
 
 
 
