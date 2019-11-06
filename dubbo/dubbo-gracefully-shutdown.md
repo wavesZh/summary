@@ -3,6 +3,7 @@
 ### link
 
 [Dubbo 优雅停机](https://dubbo.apache.org/zh-cn/blog/dubbo-gracefully-shutdown.html)
+[优雅停机原理及在SpringBoot中遇到的问题](https://www.jianshu.com/p/3d8c97b263b1)
 
 ### 定义
 
