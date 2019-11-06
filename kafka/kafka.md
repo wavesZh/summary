@@ -114,10 +114,10 @@ good:[Kafka client 消息接收的三种模式](https://blog.csdn.net/laojiaqi/a
 当consumer的max.poll.interval.ms比业务处理时间要短的话，会导致rebalance，offset提交失败，进而重复消费message。
 
 
-复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），确保存活，不影响consumer线程）-> 后面看到日志提示， `You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.records. `增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
+复盘： 发现重复消费的情况，首先想到offset没有提交成功->放开debug日志，查看spring kafka的具体运行日志->无果，可能是auto.commit=true造成的，改为false，用spring kafka自己的提交方式->无效，将业务代码注释，有效，故认为业务代码处理时间过长造成的->业务时长不能缩短，那就尝试更改consumer配置->首先将session.time.out调大，无效（后面发现这个只会影响heartbreat线程（coordinator和conumser group一对一），确保存活，不影响consumer线程）-> 后面看到日志提示， `You can address this either by increasing the session timeout or by reducing the maximum size of batches returned in poll() with max.poll.record™s. `增加拉取频率（max.poll.interval.ms）降低拉取批次数量（max.poll.records），有效
 
 
-ps: springkafka, enable.auto.commit=false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交（consumerCoordinator.maybeAutoCommitOffsetAsync）
+ps: 在 spring-kafka 中, enable.auto.commit=false, 并不是指禁止自动提交，而是采用 kafka 默认的提交方式; true 则表示采用 spring 人工提交方式。false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交（consumerCoordinator.maybeAutoCommitOffsetAsync）。如果想要实现手动提交，除了 enable.auto.commit=false, 还需要指定 AckMode=MANUAL
 
 
 HeartbeatThread 负责坚持节点的存活情况。
@@ -167,3 +167,10 @@ auto.offset.reset都是在consumer起初开始消费，没有offset记录时起�
 kafka默认就是异步`Future future = producer.send(record)`, 同步就话，`producer.send(record).get()`。根据业务自行选择。
 
 发送结果可以通过future来获取，但是会阻塞。也可以通过自定义`ProducerListener`中的来异步处理结果。由`KafkaTemplate.doSend`可知。
+
+
+5. 手动提交模式但不提交，会重复消费吗？
+
+不会重复消费， 但是 reblanace 后，会重复消费。
+
+
