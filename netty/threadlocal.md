@@ -1,8 +1,8 @@
 # ThreadLocal vs FastThreadLocal 
 
-ThreadLocal通过map获取value；通过index in array，效率更高 (注释上说的)
+ThreadLocal 通过 map 获取 value；FastThreadLocal 通过 index in array，效率更高 (注释上说的)
 
-ThreadLocal的缺陷：内存泄露 (Memory Leak)
+ThreadLocal 的缺陷：内存泄露 (Memory Leak)
 
 why？ 
 
@@ -39,7 +39,7 @@ public T get() {
 
 1. ThreadLocalMap中的key被回收了：key=null，但是value没有被回收。虽然get/set/remove等方法清除value的强引用，但是不是每次调用并且是不及时的
 2. 与ThreadPool搭配使用，ThreadPool中的thread不会被回收直至JVM退出。虽然TheadLocalMap拥有对ThreadLocal对象的WeakReference，但是Thread拥有对
-ThreadLocal对象的强引用。根据 "单挑引用链的可达性以最弱的一个引用类型来决定；多条引用链的可达性以最强的一个引用类型来决定"，不会回收。
+ThreadLocal对象的强引用。根据 "单条引用链的可达性以最弱的一个引用类型来决定；多条引用链的可达性以最强的一个引用类型来决定"，不会回收。
 
 怎么避免内存泄漏呢？
 
