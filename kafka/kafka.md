@@ -120,7 +120,7 @@ good:[Kafka client 消息接收的三种模式](https://blog.csdn.net/laojiaqi/a
 ps: 在 spring-kafka 中, enable.auto.commit=false, 并不是指禁止自动提交，而是采用 kafka 默认的提交方式; true 则表示采用 spring 人工提交方式。false, 当下一次poll时提交之前poll下来的offset；enable.auto.commit=true，后台线程定期提交（consumerCoordinator.maybeAutoCommitOffsetAsync）。如果想要实现手动提交，除了 enable.auto.commit=false, 还需要指定 AckMode=MANUAL
 
 
-HeartbeatThread 负责坚持节点的存活情况。
+HeartbeatThread 负责监听节点的存活情况。
 
 code:
 
@@ -172,5 +172,33 @@ kafka默认就是异步`Future future = producer.send(record)`, 同步就话，`
 5. 手动提交模式但不提交，会重复消费吗？
 
 不会重复消费， 但是 reblanace 后，会重复消费。
+
+
+6. kafka 异步消费
+
+kafka 异步消费
+
+a. offset 管理
+
+批量拉取后的数据都由消费业务端处理，认为数据已消费，可以提交 offset。后续处理失败的补偿由业务方处理，不交由kafka
+
+b. 限流机制，如果业务消费过慢，而consumer 不断拉取，消息将堆积在内存中。
+
+设置阀值，如果超出阀值，则阻塞不进行拉取，阻塞时间不能过长导致 Rebalance。
+如果阻塞后，pending 任务数仍超出阀值：
+	1. 继续阻塞 -> rebalance -> 数据重复消费 不好
+	2. 继续拉取 -> 内存数据堆积 -> 总会爆掉
+
+选择方案2，消费能力不足，增加线程数量
+
+c. 优雅停机策略
+
+停止数据拉取->等待全部任务完成，
+
+
+7. 批量消费
+
+批量消费的关键不是拉取动作，而是提交偏移量这个动作。拉取数据一般来说都是批量拉取，而不会只拉取单条数据。那批量消费的优势在哪呢？体现在提交动作上。如果逐条提交，频繁调用api触发网络操作，性能不好.
+
 
 

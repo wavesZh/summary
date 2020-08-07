@@ -87,3 +87,4 @@ Concurrent Mark Sweep，标记-清除。分为4个阶段： 初始标记，并�
 ## link
 
 [cs-notes](https://cyc2018.github.io/CS-Notes/#/notes/Java%20虚拟机)
+[图解GC](https://xie.infoq.cn/article/9d4830f6c0c1e2df0753f9858)
